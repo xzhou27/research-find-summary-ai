@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Automatic Research Summary Generator</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f0f8ff; /* Light blue/white background */
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      background-color: #007BFF;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    header h1 {
+      margin: 0;
+      font-weight: 500;
+    }
+    header .subtitle {
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    .journals {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .journal-btn {
+      display: inline-block;
+      padding: 10px 15px;
+      margin: 5px;
+      border: 1px solid #007BFF;
+      border-radius: 4px;
+      background-color: white;
+      color: #007BFF;
+      cursor: pointer;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .journal-btn.selected {
+      background-color: #007BFF;
+      color: white;
+    }
+    .inputs {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .inputs label {
+      margin-right: 10px;
+      font-weight: 500;
+    }
+    input[type="text"] {
+      padding: 8px;
+      border: 1px solid #007BFF;
+      border-radius: 4px;
+      width: 200px;
+      margin-right: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #007BFF;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #runOutput, #rankOutput {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #007BFF;
+      background-color: white;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+      border-radius: 4px;
+    }
+    /* Layout for summarization outputs */
+    #summarizeSummaryRow {
+      margin-top: 20px;
+    }
+    #summarizeScorePromptRow {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .outputBox {
+      border: 1px solid #007BFF;
+      padding: 10px;
+      background-color: white;
+      border-radius: 4px;
+      overflow-y: auto;
+    }
+    /* Generated Summary (blog) takes full width and fixed height of half the viewport */
+    #blogBox {
+      width: 100%;
+      height: 50vh;  
+      overflow-y: auto;
+    }
+    /* In the score/prompt row, adjust flex ratios as desired */
+    #scoreBox {
+      flex: 1;
+      max-height: 800px;
+    }
+    #promptBox {
+      flex: 3;
+      max-height: 800px;
+    }
+    .outputTitle {
+      font-weight: 500;
+      margin-bottom: 10px;
+      color: #007BFF;
+    }
+    p {
+      margin: 0 0 1em;
+    }
+    hr {
+      border: none;
+      height: 1px;
+      background-color: #007BFF;
+      margin: 40px 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Automatic Research Summary Generator</h1>
+    <div class="subtitle">
+      Email: <a href="mailto:summer.zhou@biostate.ai" style="color: white; text-decoration: underline;">summer.zhou@biostate.ai</a> for questions
+    </div>
+  </header>
+  
+  <div class="container">
+    <!-- PubMed Query Section -->
+    <div class="journals">
+      <div id="journalButtons">
+        <span class="journal-btn" data-journal="N Engl J Med">N Engl J Med</span>
+        <span class="journal-btn" data-journal="Nature">Nature</span>
+        <span class="journal-btn" data-journal="JAMA">JAMA</span>
+        <span class="journal-btn" data-journal="Science">Science</span>
+        <span class="journal-btn" data-journal="Cell">Cell</span>
+      </div>
+    </div>
+    
+    <div class="inputs">
+      <label for="startDate">Start Date:</label>
+      <input type="text" id="startDate" placeholder="YYYY/MM/D" value="2024/01/1">
+      <label for="endDate">End Date:</label>
+      <input type="text" id="endDate" placeholder="YYYY/MM/D or 3000" value="3000">
+    </div>
+    
+    <div class="inputs">
+      <button id="runButton">Run PubMed Query</button>
+    </div>
+    <div id="runOutput"></div>
+    
+    <hr>
+    
+    <div class="inputs">
+      <label for="topN">Number of Top Relevant Papers:</label>
+      <input type="text" id="topN" placeholder="Enter a number" value="5">
+      <button id="rankButton">Rank Relevancy to RNAseq Research</button>
+    </div>
+    <div id="rankOutput"></div>
+    
+    <hr>
+    
+    <!-- PDF Upload & Summarization Section -->
+    <div class="inputs">
+      <label for="pdfFile">Upload Paper (PDF):</label>
+      <input type="file" id="pdfFile" accept="application/pdf">
+      <span id="summarizeStatus"></span>
+      <br>
+      <button id="summarizeButton">Summarize</button>
+    </div>
+    
+    <!-- Generated Summary Row (top) -->
+    <div id="summarizeSummaryRow">
+      <div id="blogBox" class="outputBox">
+        <div class="outputTitle">Generated Summary</div>
+        <div id="blogContent"></div>
+      </div>
+    </div>
+    
+    <!-- Score and Prompt Row (bottom) -->
+    <div id="summarizeScorePromptRow">
+      <div id="scoreBox" class="outputBox">
+        <div class="outputTitle">Iteration Scores</div>
+        <div id="scoreContent"></div>
+      </div>
+      <div id="promptBox" class="outputBox">
+        <div class="outputTitle">Updated Prompts</div>
+        <div id="promptContent"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Toggle journal selection
+    const journalButtons = document.querySelectorAll('.journal-btn');
+    journalButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.classList.toggle('selected');
+      });
+    });
+    
+    // Function to stream text from the server (for non-summarization endpoints)
+    function streamText(url, payload, outputElement, isFormData = false) {
+      let options = { method: 'POST' };
+      if (isFormData) {
+        options.body = payload;
+      } else {
+        options.headers = { 'Content-Type': 'application/json' };
+        options.body = JSON.stringify(payload);
+      }
+      fetch(url, options).then(response => {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        function read() {
+          reader.read().then(({ done, value }) => {
+            if (done) return;
+            const chunk = decoder.decode(value);
+            outputElement.textContent += chunk;
+            read();
+          });
+        }
+        read();
+      }).catch(err => {
+        outputElement.textContent += "\nError: " + err;
+      });
+    }
+    
+    // PubMed Query button click
+    document.getElementById('runButton').addEventListener('click', () => {
+      const selectedJournals = [];
+      journalButtons.forEach(btn => {
+        if (btn.classList.contains('selected')) {
+          selectedJournals.push(btn.getAttribute('data-journal'));
+        }
+      });
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const runOutput = document.getElementById('runOutput');
+      runOutput.textContent = "Running PubMed query...\n";
+      streamText('/run', { journals: selectedJournals, start_date: startDate, end_date: endDate }, runOutput);
+    });
+    
+    // Ranking button click
+    document.getElementById('rankButton').addEventListener('click', () => {
+      const topN = document.getElementById('topN').value;
+      const rankOutput = document.getElementById('rankOutput');
+      rankOutput.textContent = "Ranking papers...\n";
+      fetch('/rank', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ top_n: topN })
+      })
+      .then(response => response.json())
+      .then(data => {
+        rankOutput.textContent = data.output;
+      })
+      .catch(err => {
+        rankOutput.textContent += "\nError: " + err;
+      });
+    });
+    
+    // Helper function to append a message as a new paragraph.
+    function appendMessage(container, message) {
+      const p = document.createElement("p");
+      p.innerHTML = message;
+      p.style.marginBottom = "1em"; // creates one empty line (via margin) between messages
+      container.appendChild(p);
+    }
+    
+    // Summarize button click (PDF Upload) using JSON stream processing
+    document.getElementById('summarizeButton').addEventListener('click', () => {
+      const pdfInput = document.getElementById('pdfFile');
+      const scoreContent = document.getElementById('scoreContent');
+      const blogContent = document.getElementById('blogContent');
+      const promptContent = document.getElementById('promptContent');
+      const summarizeStatus = document.getElementById('summarizeStatus');
+      
+      // Immediately show "Generation begins" next to the button
+      
+      // Clear previous outputs
+      scoreContent.innerHTML = "";
+      blogContent.innerHTML = "";
+      promptContent.innerHTML = "";
+      
+      if (pdfInput.files.length === 0) {
+        alert("Please upload a PDF file.");
+        return;
+      }
+      const formData = new FormData();
+      formData.append('pdf', pdfInput.files[0]);
+      
+      fetch('/summarize', {
+        method: 'POST',
+        body: formData
+      }).then(response => {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        
+        function read() {
+          reader.read().then(({ done, value }) => {
+            if (done) return;
+            buffer += decoder.decode(value, { stream: true });
+            let lines = buffer.split("\n");
+            buffer = lines.pop();  // Save incomplete line
+            lines.forEach(line => {
+              if (line.trim().length === 0) return;
+              try {
+                const data = JSON.parse(line);
+                const msg = data.message.trim();
+                if (data.type === "score") {
+                  appendMessage(scoreContent, msg);
+                } else if (data.type === "blog") {
+                  appendMessage(blogContent, msg);
+                } else if (data.type === "prompt") {
+                  appendMessage(promptContent, msg);
+                }
+                // Optionally handle "log" messages if desired.
+              } catch (e) {
+                console.error("Error parsing JSON:", e);
+              }
+            });
+            read();
+          });
+        }
+        read();
+      }).catch(err => {
+        alert("Error: " + err);
+      });
+    });
+  </script>
+</body>
+</html>
