@@ -16,11 +16,7 @@ A Flask web application that helps generate blog posts from scientific papers us
 
 ## Installation
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd blogpost_generator
-```
+1. Clone the repository
 
 2. Install required dependencies:
 ```bash
